@@ -1,3 +1,23 @@
+;; Copyright (c) 2017 Steve Losh and contributors
+
+;; Permission is hereby granted, free of charge, to any person obtaining a copy
+;; of this software and associated documentation files (the "Software"), to deal
+;; in the Software without restriction, including without limitation the rights
+;; to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+;; copies of the Software, and to permit persons to whom the Software is
+;; furnished to do so, subject to the following conditions:
+
+;; The above copyright notice and this permission notice shall be included in all
+;; copies or substantial portions of the Software.
+
+;; THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+;; IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+;; FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+;; AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+;; LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+;; OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+;; SOFTWARE.
+
 (in-package :beast)
 
 
@@ -22,7 +42,6 @@
 ;;;
 ;;; TODO: Figure out the distinct problem.
 
-
 ;;;; Global Data Structures ---------------------------------------------------
 (defvar *entity-id-counter* 0)
 (defvar *entity-index* (make-hash-table))
@@ -37,15 +56,15 @@
 
 
 ;;;; Entities -----------------------------------------------------------------
-(defclass entity ()
+(defclass entity (event-emitter)
   ((id
-     :reader entity-id :initform (incf *entity-id-counter*)
-     :documentation
-     "The unique ID of the entity.  This may go away in the future.")
+    :reader entity-id :initform (incf *entity-id-counter*)
+    :documentation
+    "The unique ID of the entity.  This may go away in the future.")
    (%beast/aspects
-     :allocation :class :initform nil
-     :documentation
-     "A list of the aspects this entity class inherits.  **Don't touch this.**"))
+    :allocation :class :initform nil
+    :documentation
+    "A list of the aspects this entity class inherits.  **Don't touch this.**"))
   (:documentation "A single entity in the game world."))
 
 (defmethod print-object ((e entity) stream)
@@ -71,13 +90,13 @@
 (defun index-entity-systems (entity)
   "Insert `entity` into appropriate system indexes."
   (loop
-    :with id = (entity-id entity)
-    :for system :being :the hash-keys :of *systems*
-    :using (hash-value (nil nil type-specifiers))
-    :do (loop :for argument-index :across (gethash system *system-index*)
-              :for specifier :in type-specifiers
-              :when (entity-satisfies-system-type-specifier-p entity specifier)
-              :do (setf (gethash id argument-index) entity))))
+        :with id = (entity-id entity)
+        :for system :being :the hash-keys :of *systems*
+        :using (hash-value (nil nil type-specifiers))
+        :do (loop :for argument-index :across (gethash system *system-index*)
+                  :for specifier :in type-specifiers
+                  :when (entity-satisfies-system-type-specifier-p entity specifier)
+                  :do (setf (gethash id argument-index) entity))))
 
 
 (defun unindex-entity (id)
@@ -87,21 +106,21 @@
 (defun unindex-entity-aspects (id)
   "Remove `entity` from the aspect indexes."
   (loop
-    :for index :being :the :hash-values :of *aspect-index*
-    :do (remhash id index)))
+        :for index :being :the :hash-values :of *aspect-index*
+        :do (remhash id index)))
 
 (defun unindex-entity-systems (id)
   "Remove `entity` from the system indexes."
   (loop
-    :for argument-indexes :being :the hash-values :of *system-index*
-    :do (loop :for index :across argument-indexes
-              :do (remhash id index))))
+        :for argument-indexes :being :the hash-values :of *system-index*
+        :do (loop :for index :across argument-indexes
+                  :do (remhash id index))))
 
 
 (defgeneric entity-created (entity)
   (:method ((entity entity)) nil)
   (:documentation
-  "Called after an entity has been created and indexed.
+   "Called after an entity has been created and indexed.
 
   The default method does nothing, but users can implement their own auxillary
   methods to run code when entities are created.
@@ -111,7 +130,7 @@
 (defgeneric entity-destroyed (entity)
   (:method ((entity entity)) nil)
   (:documentation
-  "Called after an entity has been destroyed and unindexed.
+   "Called after an entity has been destroyed and unindexed.
 
   The default method does nothing, but users can implement their own auxillary
   methods to run code when entities are destroyed.
@@ -205,12 +224,12 @@
 
   "
   `(progn
-    (defclass ,name (entity ,@aspects)
-      ((%beast/aspects :allocation :class :initform ',aspects)
-       ,@slots))
-    (defun ,(symb name '?) (object)
-      (typep object ',name))
-    (find-class ',name)))
+     (defclass ,name (entity ,@aspects)
+       ((%beast/aspects :allocation :class :initform ',aspects)
+        ,@slots))
+     (defun ,(symb name '?) (object)
+       (typep object ',name))
+     (find-class ',name)))
 
 
 ;;;; Aspects ------------------------------------------------------------------
@@ -250,33 +269,33 @@
              (symbol (list f))
              (list f))))
     `(progn
-      (defclass ,name ()
-        ,(loop
-           :for (field . field-options) :in (mapcar #'clean-field fields)
-           :for field-name = (symb name '/ field)
-           :collect `(,field-name
-                      :accessor ,field-name
-                      :initarg ,(intern (string field-name) :keyword)
-                      ,@field-options)))
+       (defclass ,name ()
+         ,(loop
+                :for (field . field-options) :in (mapcar #'clean-field fields)
+                :for field-name = (symb name '/ field)
+                :collect `(,field-name
+                           :accessor ,field-name
+                           :initarg ,(intern (string field-name) :keyword)
+                           ,@field-options)))
 
-      (defun ,(symb name '?) (object)
-        (typep object ',name))
+       (defun ,(symb name '?) (object)
+         (typep object ',name))
 
-      (initialize-aspect-index ',name)
+       (initialize-aspect-index ',name)
 
-      (find-class ',name))))
+       (find-class ',name))))
 
 
 ;;;; Systems ------------------------------------------------------------------
 (defun rebuild-system-index (arglist)
   (coerce (loop
-            :for (nil . type-specifier) :in arglist
-            :for index = (make-hash-table)
-            :do (loop
-                  :for entity :being :the :hash-values :of *entity-index*
-                  :when (entity-satisfies-system-type-specifier-p entity type-specifier)
-                  :do (setf (gethash (entity-id entity) index) entity))
-            :collect index)
+                :for (nil . type-specifier) :in arglist
+                :for index = (make-hash-table)
+                :do (loop
+                          :for entity :being :the :hash-values :of *entity-index*
+                          :when (entity-satisfies-system-type-specifier-p entity type-specifier)
+                          :do (setf (gethash (entity-id entity) index) entity))
+                :collect index)
           'vector))
 
 (defun initialize-system-index (name function arglist)
@@ -294,11 +313,11 @@
       `(let ((,argument-indexes (gethash ',name *system-index*)))
          ,(labels ((recur (types args n)
                      (if (null types)
-                       `(,name ,@arguments)
-                       `(loop
-                          :for ,(first args) :of-type ,(first types)
-                          :being :the :hash-values :of (aref ,argument-indexes ,n)
-                          :do ,(recur (rest types) (rest args) (1+ n))))))
+                         `(,name ,@arguments)
+                         `(loop
+                                :for ,(first args) :of-type ,(first types)
+                                :being :the :hash-values :of (aref ,argument-indexes ,n)
+                                :do ,(recur (rest types) (rest args) (1+ n))))))
             (recur type-specifiers arguments 0))))))
 
 
@@ -332,27 +351,26 @@
 
   "
   (let ((argument-type-specifiers
-          (loop :for arg :in arglist ; either foo or (foo a1 a2)
-                :for classes = (if (listp arg) (rest arg) nil)
-                :collect `(and entity ,@classes))))
+         (loop :for arg :in arglist ; either foo or (foo a1 a2)
+               :for classes = (if (listp arg) (rest arg) nil)
+               :collect `(and entity ,@classes))))
     (destructuring-bind (name &key inline) (if (listp name-and-options)
                                                name-and-options
                                                (list name-and-options))
       `(progn
-        (declaim (ftype (function (,@argument-type-specifiers)
-                                  (values null &optional))
-                        ,name)
-                 ,(if inline
-                    `(inline ,name)
-                    `(notinline ,name)))
-        (defun ,name (,@(mapcar #'car arglist))
-          ,@body
-          nil)
+         (declaim (ftype (function (,@argument-type-specifiers)
+                                   (values null &optional))
+                         ,name)
+                  ,(if inline
+                       `(inline ,name)
+                       `(notinline ,name)))
+         (defun ,name (,@(mapcar #'car arglist))
+           ,@body
+           nil)
 
-        (defun ,(symb 'run- name) ()
-          ,(build-system-runner name argument-type-specifiers))
+         (defun ,(symb 'run- name) ()
+           ,(build-system-runner name argument-type-specifiers))
 
-        (initialize-system-index ',name #',name ',arglist)
+         (initialize-system-index ',name #',name ',arglist)
 
-        ',name))))
-
+         ',name))))

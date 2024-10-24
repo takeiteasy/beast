@@ -1,20 +1,35 @@
-(defpackage :beast
+(defpackage :event-emitter
   (:use :cl)
   (:export
-    :entity
-    :entity-id
+   #:event-emitter
+   #:event-emitter*
 
-    :define-entity
+   #:bind-listener
+   #:bind-listener-once
+   #:unbind-listener
+   #:unbind-all-listeners
 
-    :create-entity
-    :destroy-entity
-    :clear-entities
-    :map-entities
-    :all-entities
+   #:broadcast-event
 
-    :entity-created
-    :entity-destroyed
+   #:event-listeners))
 
-    :define-aspect
+(defpackage :beast
+  (:use :cl :event-emitter)
+  (:export
+   #:entity
+   #:entity-id
 
-    :define-system))
+   #:define-entity
+
+   #:create-entity
+   #:destroy-entity
+   #:clear-entities
+   #:map-entities
+   #:all-entities
+
+   #:entity-created
+   #:entity-destroyed
+
+   #:define-aspect
+
+   #:define-system))

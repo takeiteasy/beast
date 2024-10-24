@@ -1,30 +1,31 @@
 (asdf:defsystem :beast
-  :description "Basic Entity/Aspect/System Toolkit"
-  :author "Steve Losh <steve@stevelosh.com>"
-  :homepage "https://docs.stevelosh.com/beast/"
+    :description "Basic Entity/Aspect/System Toolkit"
+    :author "Steve Losh <steve@stevelosh.com>"
+    :homepage "https://docs.stevelosh.com/beast/"
 
-  :license "MIT"
-  :version "1.2.0"
+    :license "MIT"
+    :version "1.2.0"
 
-  :depends-on ()
+    :depends-on ()
 
-  :serial t
-  :components ((:module "src"
-                :serial t
-                :components ((:file "package")
-                             (:file "main"))))
+    :serial t
+    :components ((:module "src"
+                          :serial t
+                          :components ((:file "package")
+                                       (:file "east")
+                                       (:file "event-emitter"))))
 
-  :in-order-to ((asdf:test-op (asdf:test-op :beast/test))))
+    :in-order-to ((asdf:test-op (asdf:test-op :beast/test))))
 
 
 (asdf:defsystem :beast/test
-  :depends-on (:1am :beast)
+    :depends-on (:1am :beast)
 
-  :serial t
-  :components ((:module "test"
-                :serial t
-                :components ((:file "package")
-                             (:file "test"))))
+    :serial t
+    :components ((:module "test"
+                          :serial t
+                          :components ((:file "package")
+                                       (:file "test"))))
 
-  :perform
-  (asdf:test-op (op system) (uiop:symbol-call :beast/test :run-tests)))
+    :perform
+    (asdf:test-op (op system) (uiop:symbol-call :beast/test :run-tests)))
